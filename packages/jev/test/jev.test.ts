@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gatewayCost, gatewayFree, GATEWAY_FREE_UNTIL, hasJev, parseAnswers } from '../src/index'
+import { gatewayCost, gatewayFree, GATEWAY_FREE_UNTIL, hasJev, parseAnswers, sample } from '../src/index'
 
 // The two routes' real responses to the same question (curl, 25 September 2026), trimmed: TypeSafe directly, and the
 // AI Gateway, which adds its routing metadata.
@@ -36,5 +36,13 @@ describe('routes and the free period', () => {
     expect(gatewayFree({ typesafe: 'k' }, 0)).toBe(false)
     expect(hasJev({})).toBe(false)
     expect(hasJev({ typesafe: 'k' })).toBe(true)
+  })
+})
+
+describe('sample', () => {
+  const p = { a: 0.7, b: 0.25, c: 0.05, d: 0.001 }
+  it('takes the first choice at temperature 0', () => expect(sample(p, ['a', 'b', 'c', 'd'], 0)).toBe('a'))
+  it('never draws an option under 2%', () => {
+    for (let i = 0; i < 200; i++) expect(sample(p, ['a', 'b', 'c', 'd'], 2)).not.toBe('d')
   })
 })

@@ -111,3 +111,17 @@ export async function jevChoose(keys: JevKeys, q: { state: unknown; instructions
   if (!r || !pick?.choice || !(pick.choice in q.criteria)) return null
   return { choice: pick.choice, probabilities: pick.probabilities ?? {}, confidence: pick.confidence, model: r.model, via: r.via }
 }
+
+/**
+ * An option drawn from Jev's probabilities at a temperature: 0 is its first choice, higher spreads the pick wider, but
+ * only over options Jev gives at least 2%, so a wide draw is a lesser choice, never one it all but rules out.
+ */
+export function sample<T extends string>(probabilities: Partial<Record<T, number>>, keys: readonly T[], temperature: number): T | undefined {
+  const weighted = keys.map((k) => [k, probabilities[k] ?? 0] as const).filter(([, q]) => q >= 0.02)
+  if (!weighted.length) return
+  if (temperature <= 0) return weighted.reduce((a, b) => (b[1] > a[1] ? b : a))[0]
+  const w = weighted.map(([k, q]) => [k, q ** (1 / temperature)] as const)
+  let r = Math.random() * w.reduce((s, [, q]) => s + q, 0)
+  for (const [k, q] of w) if ((r -= q) <= 0) return k
+  return w.at(-1)![0]
+}

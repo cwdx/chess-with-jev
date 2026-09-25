@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyseMoves, headline, isSafe, legalMoves, replay, sample, whiteChances } from '../src/moves'
+import { analyseMoves, headline, isSafe, legalMoves, replay, whiteChances } from '../src/moves'
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 const facts = (moves: string[]) => {
@@ -40,14 +40,6 @@ describe('analyseMoves', () => {
     const back = find(f, 'f3g1')
     expect(back.description).toContain('undoes your last move')
     expect(back.description).toContain('repeats a position')
-  })
-})
-
-describe('sample', () => {
-  const p = { a: 0.7, b: 0.25, c: 0.05, d: 0.001 }
-  it('takes the first choice at temperature 0', () => expect(sample(p, ['a', 'b', 'c', 'd'], 0)).toBe('a'))
-  it('never draws a move under 2%', () => {
-    for (let i = 0; i < 200; i++) expect(sample(p, ['a', 'b', 'c', 'd'], 2)).not.toBe('d')
   })
 })
 

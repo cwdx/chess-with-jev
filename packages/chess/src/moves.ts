@@ -231,19 +231,5 @@ export function whiteChances(p: Chess): number {
   return 1 / (1 + Math.exp(-0.00368208 * cp))
 }
 
-/**
- * A move drawn from Jev's probabilities at a temperature: 0 is its first choice, higher spreads the pick wider, but only
- * over moves Jev gives at least 2%, so a wide draw is a weaker move, never one of the many it all but rules out.
- */
-export function sample<T extends string>(probabilities: Partial<Record<T, number>>, keys: readonly T[], temperature: number): T | undefined {
-  const weighted = keys.map((k) => [k, probabilities[k] ?? 0] as const).filter(([, q]) => q >= 0.02)
-  if (!weighted.length) return
-  if (temperature <= 0) return weighted.reduce((a, b) => (b[1] > a[1] ? b : a))[0]
-  const w = weighted.map(([k, q]) => [k, q ** (1 / temperature)] as const)
-  let r = Math.random() * w.reduce((s, [, q]) => s + q, 0)
-  for (const [k, q] of w) if ((r -= q) <= 0) return k
-  return w.at(-1)![0]
-}
-
 /** Jev's priorities, in order, for the pick. */
 export const PRIORITIES = 'Choose the best move for you. Priorities, in order: 1. deliver checkmate, or force it; 2. never allow checkmate; 3. do not lose material (avoid every move marked "down overall"); 4. win material when it is safe; 5. then make progress: develop your pieces, castle, take the centre, create threats. Do not shuffle a piece back and forth or repeat positions unless you are losing.'

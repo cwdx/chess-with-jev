@@ -1,6 +1,6 @@
 import { makeFen } from 'chessops/fen'
-import type { JevQuestion, JevResult } from '@cw/jev'
-import { afterMove, analyseMoves, headline, isSafe, legalMoves, PRIORITIES, replay, sample, whiteChances } from './moves'
+import { sample, type JevQuestion, type JevResult } from '@cw/jev'
+import { afterMove, analyseMoves, headline, isSafe, legalMoves, PRIORITIES, replay, whiteChances } from './moves'
 
 // Jev's chess move: given a game (its start and moves, UCI), replay it, work out every legal move's facts
 // (moves.ts: exchanges, mates, threats, repetition) and ask Jev, in one call, for its move and a reading of the
