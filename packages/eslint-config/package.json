@@ -1,0 +1,13 @@
+{
+  "name": "@cw/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./index.mjs" },
+  "dependencies": {
+    "@nuxt/eslint-config": "^1.17.0"
+  },
+  "peerDependencies": {
+    "eslint": "^10.11.0"
+  }
+}

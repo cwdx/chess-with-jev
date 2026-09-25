@@ -1,0 +1,28 @@
+{
+  "name": "@cw/jev",
+  "version": "0.1.0",
+  "description": "A small client for TypeSafe AI's Jev (System One): the Vercel AI Gateway first, TypeSafe directly as the fallback, with answers checked and cost reported.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "format": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cw/eslint-config": "*",
+    "eslint": "^10.11.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1"
+  }
+}
