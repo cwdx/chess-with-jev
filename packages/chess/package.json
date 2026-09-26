@@ -8,10 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./rules": "./src/rules.ts",
-    "./headline": "./src/headline.ts",
-    "./moves": "./src/moves.ts",
-    "./games": "./src/games.ts",
-    "./jev-move": "./src/jev-move.ts"
+    "./headline": "./src/headline.ts"
   },
   "files": [
     "src",

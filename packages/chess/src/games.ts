@@ -1,5 +1,6 @@
+import { makePiece } from 'chessops/fen'
 import { makeSan } from 'chessops/san'
-import type { NormalMove, Role } from 'chessops/types'
+import type { NormalMove } from 'chessops/types'
 import { parseUci } from 'chessops/util'
 import { positionFrom, positionKey } from './moves'
 import { backRank, isPositionId, materialBalance, startFen } from './rules'
@@ -16,8 +17,6 @@ const SEATS: Record<GameMode, string> = { 'jev': 'human jev', 'simple': 'human s
 export const isGameMode = (v: unknown): v is GameMode => GAME_MODES.includes(v as GameMode)
 export const seatsFit = (mode: GameMode, white: Seat, black: Seat) => [white, black].sort().join(' ') === SEATS[mode].split(' ').sort().join(' ')
 export const MAX_PLIES = 600
-
-const LETTER: Record<Role, string> = { pawn: 'p', knight: 'n', bishop: 'b', rook: 'r', queen: 'q', king: 'k' }
 
 export type ScoredGame = {
   result: GameResult
@@ -54,10 +53,7 @@ export function scoreGame(n: number, moves: unknown): ScoredGame | undefined {
   }
   const end = ending(pos, seen)
   if (!end) return
-  const squares = Array.from({ length: 64 }, (_, sq) => {
-    const piece = pos.board.get(sq)
-    return piece ? (piece.color === 'white' ? LETTER[piece.role].toUpperCase() : LETTER[piece.role]) : ''
-  })
+  const squares = Array.from({ length: 64 }, (_, sq) => { const piece = pos.board.get(sq); return piece ? makePiece(piece) : '' })
   return {
     ...end, result: end.winner === 'white' ? '1-0' : end.winner === 'black' ? '0-1' : '1/2-1/2',
     sans, squares, check: pos.isCheck() ? pos.board.kingOf(pos.turn) : undefined, balance,

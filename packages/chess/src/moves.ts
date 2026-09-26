@@ -3,7 +3,8 @@ import { Chess } from 'chessops/chess'
 import { makeFen, parseFen } from 'chessops/fen'
 import { makeSan } from 'chessops/san'
 import type { Color, NormalMove, Role, Square } from 'chessops/types'
-import { makeUci, opposite, parseUci, squareFile } from 'chessops/util'
+import { makeUci, opposite, parseUci } from 'chessops/util'
+import { materialBalance, squareName, VALUE } from './rules'
 
 // What Jev is told about each move. Jev judges well but cannot calculate, so the chess facts are worked out here and
 // written so there is nothing left to add up: an exchange is played out and given as its net result ("leaving you 3
@@ -25,8 +26,6 @@ export type MoveFacts = LegalMove & {
   description: string
 }
 
-const NAME: Record<Role, string> = { pawn: 'pawn', knight: 'knight', bishop: 'bishop', rook: 'rook', queen: 'queen', king: 'king' }
-const VALUE: Record<Role, number> = { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 0 }
 const points = (n: number) => `${n} point${n === 1 ? '' : 's'}`
 const lastRank = (sq: Square) => sq >> 3 === 7 || sq >> 3 === 0
 /** A move from `from` to `to`, promoting to a queen when a pawn reaches the last rank. */
@@ -164,7 +163,7 @@ export function analyseMoves(p: Chess, moves: LegalMove[], opts: { seen?: string
         const target = after.board.get(sq)!
         if (target.role === 'king') continue
         const defended = after.kingAttackers(sq, them, after.board.occupied).nonEmpty()
-        if (VALUE[target.role] > VALUE[landed.role] || !defended) threats.push(`the ${NAME[target.role]} on ${sqName(sq)}`)
+        if (VALUE[target.role] > VALUE[landed.role] || !defended) threats.push(`the ${target.role} on ${squareName(sq)}`)
       }
     }
     const develops = (piece.role === 'knight' || piece.role === 'bishop') && move.from >> 3 === homeRank(us) && move.to >> 3 !== homeRank(us)
@@ -174,8 +173,8 @@ export function analyseMoves(p: Chess, moves: LegalMove[], opts: { seen?: string
     const notes: string[] = []
     if (mates) notes.push('CHECKMATE, wins the game')
     else {
-      notes.push(castles ? 'castles' : `${NAME[piece.role]} to ${sqName(move.to)}`)
-      if (taken && taken.color !== us) notes.push(`takes a ${NAME[taken.role]} (${points(VALUE[taken.role])})`)
+      notes.push(castles ? 'castles' : `${piece.role} to ${squareName(move.to)}`)
+      if (taken && taken.color !== us) notes.push(`takes a ${taken.role} (${points(VALUE[taken.role])})`)
       if (move.promotion) notes.push(`promotes to a ${move.promotion}`)
       if (after.isCheck()) notes.push('gives check')
       if (forcesMate) notes.push('forces checkmate next move')
@@ -195,7 +194,6 @@ export function analyseMoves(p: Chess, moves: LegalMove[], opts: { seen?: string
     return { ...m, gain, reply, net, mates, allowsMate, forcesMate, stalemates, description: `${san}: ${notes.join('; ')}` }
   })
 }
-const sqName = (sq: Square) => `${'abcdefgh'[squareFile(sq)]}${(sq >> 3) + 1}`
 
 /** A move loses nothing: no material given away, no mate allowed. */
 export const isSafe = (f: MoveFacts) => f.mates || (f.net >= 0 && !f.allowsMate && !f.stalemates)
@@ -206,16 +204,9 @@ export function headline(p: Chess, facts: MoveFacts[]): string {
   const mate = facts.find((f) => f.mates)
   if (mate) return `You are ${side}. CHECKMATE IS AVAILABLE THIS MOVE: ${mate.san}. Nothing else in this position matters.`
   const safe = facts.filter(isSafe).length
-  const material = materialFor(p, p.turn)
+  const material = (p.turn === 'white' ? 1 : -1) * materialBalance(p)
   const standing = material === 0 ? 'Material is even' : material > 0 ? `You are ${points(material)} up in material` : `You are ${points(-material)} down in material`
   return `You are ${side}${p.isCheck() ? ', and you are in check' : ''}. ${standing}. ${facts.length} legal move${facts.length === 1 ? '' : 's'}; ${safe === facts.length ? 'none loses material' : `${safe} of them lose${safe === 1 ? 's' : ''} nothing`}.`
-}
-
-/** Material for `side` minus the other side's, in points. */
-function materialFor(p: Chess, side: Color): number {
-  let n = 0
-  for (const sq of p.board.occupied) { const x = p.board.get(sq)!; n += (x.color === side ? 1 : -1) * VALUE[x.role] }
-  return n
 }
 
 /**
@@ -227,7 +218,7 @@ export function whiteChances(p: Chess): number {
   if (p.isCheckmate()) return p.turn === 'white' ? 0 : 1
   if (p.isEnd()) return 0.5
   const capture = bestCapture(p)?.wins ?? 0
-  const cp = 100 * (materialFor(p, 'white') + (p.turn === 'white' ? capture : -capture))
+  const cp = 100 * (materialBalance(p) + (p.turn === 'white' ? capture : -capture))
   return 1 / (1 + Math.exp(-0.00368208 * cp))
 }
 

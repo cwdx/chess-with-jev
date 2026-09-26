@@ -35,8 +35,6 @@ export function gatewayCost(body: unknown): number | undefined {
   const cost = meta ? Number(meta.cost) : NaN
   return Number.isFinite(cost) ? cost : undefined
 }
-/** For tests: forget that the gateway has started charging. */
-export const resetGatewayCharging = () => { gatewayCharging = false }
 export const hasJev = (keys: JevKeys) => !!(keys.gateway || keys.typesafe)
 /** TypeSafe's list price: $0.042 per million input tokens, output free (docs.typesafe.ai, September 2026). */
 export const PRICE_PER_INPUT_TOKEN = 0.042 / 1e6

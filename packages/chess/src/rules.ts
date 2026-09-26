@@ -59,7 +59,6 @@ export const setup = (rank: string) =>
  * a chessops position it is handed (types only here, so core never loads chessops).
  */
 export function simpleMove(p: Chess): NormalMove | undefined {
-  const VALUE: Record<Role, number> = { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 0 }
   let best: { move: NormalMove; score: number } | undefined
   for (const [from, tos] of p.allDests()) {
     const mover = p.board.get(from)!
@@ -81,11 +80,12 @@ export function simpleMove(p: Chess): NormalMove | undefined {
   return best?.move
 }
 
-const POINTS: Record<Role, number> = { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 0 }
+/** What each piece is worth, in points. */
+export const VALUE: Record<Role, number> = { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 0 }
 /** White's material minus Black's, in points. */
 export function materialBalance(p: Chess): number {
   let n = 0
-  for (const sq of p.board.occupied) { const x = p.board.get(sq)!; n += (x.color === 'white' ? 1 : -1) * POINTS[x.role] }
+  for (const sq of p.board.occupied) { const x = p.board.get(sq)!; n += (x.color === 'white' ? 1 : -1) * VALUE[x.role] }
   return n
 }
 
