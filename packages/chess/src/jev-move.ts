@@ -23,7 +23,7 @@ const PLANS = {
 /** Jev's move in the game `body` describes, at its level (easy, normal, hard); null if Jev did not answer. */
 export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
   const temperature = LEVELS[String(body?.level) as keyof typeof LEVELS] ?? LEVELS.hard
-  const game = Array.isArray(body?.moves) && body.moves.length <= MAX_PLIES ? replay(body?.start, body.moves) : undefined
+  const game = Array.isArray(body?.moves) && body.moves.length <= MAX_PLIES ? replay(body.start, body.moves) : undefined
   if (!game) throw new ChessInputError('Not a legal game')
   const p = game.pos
   const moves = legalMoves(p)

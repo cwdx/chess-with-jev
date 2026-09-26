@@ -106,11 +106,7 @@ function bestCapture(p: Chess): { san: string; wins: number } | undefined {
 }
 
 function hasMateInOne(p: Chess): boolean {
-  for (const [from, tos] of p.allDests()) {
-    for (const to of tos) {
-      if (afterMove(p, moveOf(p, from, to)).isCheckmate()) return true
-    }
-  }
+  for (const [from, tos] of p.allDests()) for (const to of tos) if (afterMove(p, moveOf(p, from, to)).isCheckmate()) return true
   return false
 }
 
