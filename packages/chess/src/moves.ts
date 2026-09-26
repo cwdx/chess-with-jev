@@ -62,7 +62,7 @@ export function legalMoves(p: Chess): LegalMove[] {
   for (const [from, tos] of p.allDests()) {
     const piece = p.board.get(from)!
     for (const to of tos) {
-      const promo = piece.role === 'pawn' && (to >> 3 === 7 || to >> 3 === 0) ? (['queen', 'knight'] as Role[]) : [undefined]
+      const promo = piece.role === 'pawn' && lastRank(to) ? (['queen', 'knight'] as Role[]) : [undefined]
       for (const promotion of promo) {
         const move: NormalMove = { from, to, promotion }
         moves.push({ uci: makeUci(move), san: makeSan(p, move), move })

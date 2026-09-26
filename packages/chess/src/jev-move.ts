@@ -1,5 +1,6 @@
 import { makeFen } from 'chessops/fen'
 import { sample, type JevQuestion, type JevResult } from '@cw/jev'
+import { MAX_PLIES } from './games'
 import { afterMove, analyseMoves, headline, isSafe, legalMoves, PRIORITIES, replay, whiteChances } from './moves'
 
 // Jev's chess move: given a game (its start and moves, UCI), replay it, work out every legal move's facts
@@ -12,7 +13,7 @@ export type JevMoveInput = { start?: unknown; moves?: unknown; history?: unknown
 /** A game that cannot be played on from: not legal, or already over. */
 export class ChessInputError extends Error {}
 
-// how widely Jev's pick is drawn from its own probabilities (moves.ts `sample`)
+// how widely Jev's pick is drawn from its own probabilities (@cw/jev `sample`)
 const LEVELS = { easy: 2, normal: 1, hard: 0 } as const
 const PLANS = {
   develop: 'Bring pieces out and castle', attack: 'Go after the enemy king', defend: 'Shore up threats against its own king',
@@ -22,7 +23,7 @@ const PLANS = {
 /** Jev's move in the game `body` describes, at its level (easy, normal, hard); null if Jev did not answer. */
 export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
   const temperature = LEVELS[String(body?.level) as keyof typeof LEVELS] ?? LEVELS.hard
-  const game = Array.isArray(body?.moves) && body.moves.length <= 600 ? replay(body?.start, body.moves) : undefined
+  const game = Array.isArray(body?.moves) && body.moves.length <= MAX_PLIES ? replay(body?.start, body.moves) : undefined
   if (!game) throw new ChessInputError('Not a legal game')
   const p = game.pos
   const moves = legalMoves(p)
@@ -59,7 +60,7 @@ export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
     return choice ? facts.find((m) => m.uci === choice) : undefined
   }
   let picked = choose(pick)
-  if (!r || !picked) return null
+  if (!r || !pick || !picked) return null
   // A pick that gives material away while a safe move exists is asked once more, with the reason, on the time that is
   // left (Easy keeps its slips: weaker is the point of it)
   let reasked = false
@@ -69,14 +70,15 @@ export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
       questions: { pick: pickQuestion },
       timeoutMs: Math.max(0, 12000 - (Date.now() - t0)),
     })
-    const second = choose(again?.answers.pick)
-    if (second && isSafe(second)) { picked = second; pick = again!.answers.pick; reasked = true }
+    const secondPick = again?.answers.pick
+    const second = choose(secondPick)
+    if (secondPick && second && isSafe(second)) { picked = second; pick = secondPick; reasked = true }
   }
-  const probabilities = pick!.probabilities ?? {}
+  const probabilities = pick.probabilities ?? {}
   const candidates = moves.map((m) => ({ uci: m.uci, san: m.san, p: probabilities[m.uci] ?? 0 })).sort((a, b) => b.p - a.p).slice(0, 5)
   const a = r.answers
   return {
-    uci: picked.uci, san: picked.san, candidates, confidence: pick!.confidence, model: r.model, via: r.via, ms: Date.now() - t0, options: moves.length,
+    uci: picked.uci, san: picked.san, candidates, confidence: pick.confidence, model: r.model, via: r.via, ms: Date.now() - t0, options: moves.length,
     // whether Jev's move gives nothing away, how many would have, and whether it took a second, warned ask
     safe: isSafe(picked), safeMoves: facts.filter(isSafe).length, reasked,
     reading: {

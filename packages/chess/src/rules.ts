@@ -43,13 +43,13 @@ export function startSquares(rank: string): string[] {
   })
 }
 
+const FILES = 'abcdefgh'
 /** Square index to name, e.g. 0 → a1, 63 → h8. */
-export const squareName = (sq: number) => `${'abcdefgh'[sq & 7]}${(sq >> 3) + 1}`
+export const squareName = (sq: number) => `${FILES[sq & 7]}${(sq >> 3) + 1}`
 /** a1 is dark, so a square is dark when its file and rank indices add up to an even number. */
 export const isDarkSquare = (sq: number) => ((sq & 7) + (sq >> 3)) % 2 === 0
 
 export const NAMES: Record<string, string> = { R: 'Rook', N: 'Knight', B: 'Bishop', Q: 'Queen', K: 'King', P: 'Pawn' }
-const FILES = 'abcdefgh'
 
 export const setup = (rank: string) =>
   [...rank].map((piece, i) => ({ piece, name: NAMES[piece]!, white: `${FILES[i]}1`, black: `${FILES[i]}8` }))

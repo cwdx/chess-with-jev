@@ -50,7 +50,7 @@ export function parseAnswers(body: unknown): Pick<JevResult, 'answers' | 'model'
     if (!isRecord(raw)) continue
     const type = raw.type === 'choice' || raw.type === 'score' || raw.type === 'noul' ? raw.type : undefined
     const probabilities = isRecord(raw.probabilities)
-      ? Object.fromEntries(Object.entries(raw.probabilities).flatMap(([k, p]) => (num(p) === undefined ? [] : [[k, num(p)!]])))
+      ? Object.fromEntries(Object.entries(raw.probabilities).flatMap(([k, p]) => { const v = num(p); return v === undefined ? [] : [[k, v]] }))
       : undefined
     answers[id] = { type, choice: typeof raw.choice === 'string' ? raw.choice : undefined, score: num(raw.score), noul: num(raw.noul), probabilities, confidence: num(raw.confidence) }
   }
