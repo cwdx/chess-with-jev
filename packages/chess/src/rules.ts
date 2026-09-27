@@ -1,5 +1,4 @@
-// Chess960 starting positions by the standard numbering (518 is the classical setup), the simple engine, and what a
-// game's material says about it. The rules of play are chessops'.
+// chessops for types only, so a page can import this without loading chessops.
 import type { Chess } from 'chessops/chess'
 import type { NormalMove, Role } from 'chessops/types'
 
@@ -31,7 +30,7 @@ export function backRank(n: number): string {
   return rank.join('')
 }
 
-/** The starting position as FEN, the input chessops parses (castling rights on both sides, outermost rooks). */
+/** KQkq, which chessops reads as the outermost rooks. */
 export const startFen = (rank: string) => `${rank.toLowerCase()}/pppppppp/8/8/8/8/PPPPPPPP/${rank} w KQkq - 0 1`
 
 /** The starting board as 64 FEN piece letters ('' for empty), indexed like chessops: a1 = 0, h1 = 7, h8 = 63. */
@@ -44,9 +43,8 @@ export function startSquares(rank: string): string[] {
 }
 
 const FILES = 'abcdefgh'
-/** Square index to name, e.g. 0 → a1, 63 → h8. */
 export const squareName = (sq: number) => `${FILES[sq & 7]}${(sq >> 3) + 1}`
-/** a1 is dark, so a square is dark when its file and rank indices add up to an even number. */
+/** a1 is dark. */
 export const isDarkSquare = (sq: number) => ((sq & 7) + (sq >> 3)) % 2 === 0
 
 export const NAMES: Record<string, string> = { R: 'Rook', N: 'Knight', B: 'Bishop', Q: 'Queen', K: 'King', P: 'Pawn' }
@@ -54,10 +52,7 @@ export const NAMES: Record<string, string> = { R: 'Rook', N: 'Knight', B: 'Bisho
 export const setup = (rank: string) =>
   [...rank].map((piece, i) => ({ piece, name: NAMES[piece]!, white: `${FILES[i]}1`, black: `${FILES[i]}8` }))
 
-/**
- * The simple engine: mate if it can, otherwise the best capture or check, avoiding squares it would lose. It works on
- * a chessops position it is handed (types only here, so core never loads chessops).
- */
+/** Mate if it can, otherwise the best capture or check, avoiding squares it would lose. */
 export function simpleMove(p: Chess): NormalMove | undefined {
   let best: { move: NormalMove; score: number } | undefined
   for (const [from, tos] of p.allDests()) {
@@ -80,9 +75,8 @@ export function simpleMove(p: Chess): NormalMove | undefined {
   return best?.move
 }
 
-/** What each piece is worth, in points. */
 export const VALUE: Record<Role, number> = { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 0 }
-/** White's material minus Black's, in points. */
+/** White's material minus Black's. */
 export function materialBalance(p: Chess): number {
   let n = 0
   for (const sq of p.board.occupied) { const x = p.board.get(sq)!; n += (x.color === 'white' ? 1 : -1) * VALUE[x.role] }
@@ -90,10 +84,8 @@ export function materialBalance(p: Chess): number {
 }
 
 /**
- * What a game's material says about it. `balance` is White's lead before each move and after the last (length plies
- * + 1). A move is marked when, with the reply, it won (`!`) or lost (`?`) 3 points or more, and the move that allowed a
- * mate is marked `?`. The summary names the mate, and when the winner went ahead for good and by how much when that
- * was 3 points or more; in a draw, how the material ended.
+ * `balance` is White's lead before each move and after the last (plies + 1). A move that, with the reply, won (`!`) or
+ * lost (`?`) 3 points or more is marked, as is the move that allowed mate (`?`).
  */
 export function materialStory(balance: number[], sans: string[], winner?: 'white' | 'black'): { marks: ('' | '!' | '?')[]; summary: string } {
   const marks = sans.map((_, i) => {

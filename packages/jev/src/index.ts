@@ -1,9 +1,4 @@
-// TypeSafe Jev (docs.typesafe.ai/api): typed questions over one state, answered as calibrated probabilities rather
-// than text; the questions in a call run in parallel. Plain fetch, no SDK. Two routes to the same model, tried in
-// order: Vercel's AI Gateway (its TypeSafe-compatible endpoint), then TypeSafe directly. Each is bounded by the call's
-// time budget with one retry for a server error, a short rate-limit wait or a dropped connection; any failure answers
-// null, so callers keep working without it. Both routes answer in the same shape (checked below); the gateway adds
-// routing metadata, which is ignored.
+// Any failure answers null, so callers keep working without Jev. The gateway's extra routing metadata is ignored.
 export type JevQuestion
   = | { type: 'choice'; instructions: string; criteria: Record<string, string> }
     | { type: 'score'; instructions: string; criteria: string[] }
@@ -22,14 +17,12 @@ const ROUTES: Record<JevRoute, { url: string; model: string }> = {
   typesafe: { url: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest' },
 }
 
-// Vercel's AI Gateway serves Jev free under a promotion that "ends on September 25, 2026", with no time or timezone given
-// (its model page, 25 September 2026). So the free period is read from the gateway itself: each response reports what
-// the call cost, and once one costs anything, it is over (for this server instance). At the latest it ends when 25
-// September ends everywhere (UTC−12). While it lasts, callers skip their rate limits.
+// The gateway's free promotion "ends on September 25, 2026" with no time or zone given, so it ends at the first charged
+// response (per server instance), or when 25 September ends everywhere (UTC−12). While it lasts, callers skip rate limits.
 export const GATEWAY_FREE_UNTIL = Date.parse('2026-09-26T12:00:00Z')
 let gatewayCharging = false
 export const gatewayFree = (keys: JevKeys, now = Date.now()) => !!keys.gateway && now < GATEWAY_FREE_UNTIL && !gatewayCharging
-/** What a gateway response says the call cost (provider_metadata.gateway.cost), or undefined when it does not say. */
+/** provider_metadata.gateway.cost, or undefined when the response does not say. */
 export function gatewayCost(body: unknown): number | undefined {
   const meta = isRecord(body) && isRecord(body.provider_metadata) && isRecord(body.provider_metadata.gateway) ? body.provider_metadata.gateway : undefined
   const cost = meta ? Number(meta.cost) : NaN
@@ -42,7 +35,7 @@ export const PRICE_PER_INPUT_TOKEN = 0.042 / 1e6
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
 
-/** The answers of a response, checked field by field (an unexpected shape answers null rather than half an answer). */
+/** Checked field by field: an unexpected shape answers null rather than half an answer. */
 export function parseAnswers(body: unknown): Pick<JevResult, 'answers' | 'model'> | null {
   if (!isRecord(body) || !isRecord(body.answers)) return null
   const answers: Record<string, JevAnswer> = {}
@@ -87,7 +80,7 @@ async function askVia(route: JevRoute, key: string, q: { state: unknown; questio
   return null
 }
 
-/** Ask Jev: the gateway first when it has a key, TypeSafe directly as the fallback, within one time budget. */
+/** The gateway first when it has a key, TypeSafe directly as the fallback, within one time budget. */
 export async function jevAsk(keys: JevKeys, q: { state: unknown; questions: Record<string, JevQuestion>; timeoutMs?: number }, observe?: JevObserver): Promise<JevResult | null> {
   const t0 = Date.now()
   const deadline = t0 + (q.timeoutMs ?? 2500)
@@ -110,10 +103,7 @@ export async function jevChoose(keys: JevKeys, q: { state: unknown; instructions
   return { choice: pick.choice, probabilities: pick.probabilities ?? {}, confidence: pick.confidence, model: r.model, via: r.via }
 }
 
-/**
- * An option drawn from Jev's probabilities at a temperature: 0 is its first choice, higher spreads the pick wider, but
- * only over options Jev gives at least 2%, so a wide draw is a lesser choice, never one it all but rules out.
- */
+/** Temperature 0 is Jev's first choice; higher spreads wider, but only over options Jev gives at least 2%. */
 export function sample<T extends string>(probabilities: Partial<Record<T, number>>, keys: readonly T[], temperature: number): T | undefined {
   const weighted = keys.map((k) => [k, probabilities[k] ?? 0] as const).filter(([, q]) => q >= 0.02)
   if (!weighted.length) return
