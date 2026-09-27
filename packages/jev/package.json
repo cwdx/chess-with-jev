@@ -14,13 +14,14 @@
     "README.md"
   ],
   "scripts": {
-    "lint": "eslint .",
-    "format": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --cache --cache-location node_modules/.cache/eslint/",
+    "format": "eslint . --fix --cache --cache-location node_modules/.cache/eslint/",
+    "typecheck": "tsgo --noEmit",
     "test": "vitest run"
   },
   "devDependencies": {
     "@cw/eslint-config": "*",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "eslint": "^10.11.0",
     "typescript": "^6.0.3",
     "vitest": "^5.0.1"
