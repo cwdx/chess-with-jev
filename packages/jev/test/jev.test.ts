@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gatewayCost, gatewayFree, GATEWAY_FREE_UNTIL, hasJev, parseAnswers, sample } from '../src/index'
+import { gatewayCost, hasJev, parseAnswers, sample } from '../src/index'
 
 // The two routes' real responses to the same question (curl, 25 September 2026), trimmed: TypeSafe directly, and the
 // AI Gateway, which adds its routing metadata.
@@ -23,17 +23,13 @@ describe('parseAnswers', () => {
   })
 })
 
-describe('routes and the free period', () => {
+describe('routes', () => {
   it('reads what a gateway call cost', () => {
     expect(gatewayCost({ provider_metadata: { gateway: { cost: 0, marketCost: 0.00001155 } } })).toBe(0)
     expect(gatewayCost({ provider_metadata: { gateway: { cost: '0.0000116' } } })).toBeCloseTo(0.0000116)
     expect(gatewayCost(DIRECT)).toBeUndefined()
   })
-  it('ends the free period when 25 September ends everywhere', () => expect(new Date(GATEWAY_FREE_UNTIL).toISOString()).toBe('2026-09-26T12:00:00.000Z'))
-  it('counts the gateway as free only with its key and before the promotion ends', () => {
-    expect(gatewayFree({ gateway: 'k' }, GATEWAY_FREE_UNTIL - 1)).toBe(true)
-    expect(gatewayFree({ gateway: 'k' }, GATEWAY_FREE_UNTIL)).toBe(false)
-    expect(gatewayFree({ typesafe: 'k' }, 0)).toBe(false)
+  it('needs a key', () => {
     expect(hasJev({})).toBe(false)
     expect(hasJev({ typesafe: 'k' })).toBe(true)
   })

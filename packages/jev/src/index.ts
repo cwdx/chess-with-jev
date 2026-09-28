@@ -17,11 +17,6 @@ const ROUTES: Record<JevRoute, { url: string; model: string }> = {
   typesafe: { url: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest' },
 }
 
-// The gateway's free promotion "ends on September 25, 2026" with no time or zone given, so it ends at the first charged
-// response (per server instance), or when 25 September ends everywhere (UTC−12). While it lasts, callers skip rate limits.
-export const GATEWAY_FREE_UNTIL = Date.parse('2026-09-26T12:00:00Z')
-let gatewayCharging = false
-export const gatewayFree = (keys: JevKeys, now = Date.now()) => !!keys.gateway && now < GATEWAY_FREE_UNTIL && !gatewayCharging
 /** provider_metadata.gateway.cost, or undefined when the response does not say. */
 export function gatewayCost(body: unknown): number | undefined {
   const meta = isRecord(body) && isRecord(body.provider_metadata) && isRecord(body.provider_metadata.gateway) ? body.provider_metadata.gateway : undefined
@@ -65,7 +60,6 @@ async function askVia(route: JevRoute, key: string, q: { state: unknown; questio
       if (res.ok) {
         const body = await res.json()
         const reported = route === 'gateway' ? gatewayCost(body) : undefined
-        if ((reported ?? 0) > 0) gatewayCharging = true
         const parsed = parseAnswers(body)
         const tokens = isRecord(body) && isRecord(body.usage) ? num(body.usage.input_tokens) ?? 0 : 0
         return parsed && { ...parsed, cost: reported ?? tokens * PRICE_PER_INPUT_TOKEN }
