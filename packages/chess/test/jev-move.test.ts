@@ -8,11 +8,13 @@ const MATE = 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1
 // the same without the bishop on c4: no mate, and Qxf7 now loses the queen
 const QUIET = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1'
 
+type Asked = Parameters<JevAsk>[0]
+const offeredKeys = (q: Asked) => Object.keys((q.questions.pick as Extract<JevQuestion, { type: 'choice' }>).criteria)
 const asking = () => {
-  const asked: Parameters<JevAsk>[0][] = []
+  const asked: Asked[] = []
   const ask: JevAsk = async (q) => {
     asked.push(q)
-    const keys = Object.keys((q.questions.pick as Extract<JevQuestion, { type: 'choice' }>).criteria)
+    const keys = offeredKeys(q)
     return { answers: { pick: { choice: keys[0], confidence: 1, probabilities: { [keys[0]!]: 1 } } }, via: 'typesafe', cost: 0 }
   }
   return { ask, asked }
@@ -32,7 +34,7 @@ describe('jevMove', () => {
     const criteria = async (level: string) => {
       const { ask, asked } = asking()
       const r = await jevMove(ask, { start: QUIET, moves: [], level })
-      return { r, n: Object.keys((asked[0]!.questions.pick as Extract<JevQuestion, { type: 'choice' }>).criteria).length }
+      return { r, n: offeredKeys(asked[0]!).length }
     }
     const normal = await criteria('normal')
     expect(normal.n).toBe(safe)

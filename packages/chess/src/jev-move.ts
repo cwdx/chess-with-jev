@@ -9,7 +9,7 @@ export class ChessInputError extends Error {}
 
 // temperatures for @cw/jev `sample`
 const LEVELS = { easy: 2, normal: 1, hard: 0 } as const
-export const PLANS = {
+const PLANS = {
   develop: 'Bring pieces out and castle', attack: 'Go after the enemy king', defend: 'Shore up threats against its own king',
   trade: 'Exchange pieces to simplify', push: 'Advance pawns for space or a passed pawn', win: 'Convert a material advantage',
 }
@@ -63,7 +63,7 @@ export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
       eval: whiteChances(afterMove(p, picked.move)),
       kingRisk: a.risk?.noul,
       sharpness: typeof a.sharp?.score === 'number' ? a.sharp.score / 2 : undefined,
-      plan: a.plan?.choice as keyof typeof PLANS | undefined,
+      plan: a.plan?.choice,
     },
   }
 }
