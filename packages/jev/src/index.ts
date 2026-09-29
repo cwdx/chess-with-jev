@@ -9,6 +9,8 @@ export type JevRoute = 'gateway' | 'typesafe'
 export type JevKeys = { gateway?: string; typesafe?: string }
 /** `cost` is in US dollars: what the gateway reports, or for TypeSafe directly the input tokens at its list price. */
 export type JevResult = { answers: Record<string, JevAnswer>; model?: string; via: JevRoute; cost: number }
+/** `jevAsk` with its keys bound, or a wrapper that also limits and records calls. */
+export type JevAsk = (q: { state: unknown; questions: Record<string, JevQuestion>; timeoutMs?: number }) => Promise<JevResult | null>
 /** Told of every call once it is over: its result (null when no route answered) and how long it took. */
 export type JevObserver = (result: JevResult | null, ms: number) => void
 

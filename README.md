@@ -1,6 +1,6 @@
 # Chess with Jev
 
-The code behind [Chess with Jev](https://chriswijnia.com/experiments/chess): browser chess and Chess960 where code
+The code behind [Chess with Jev](https://chriswijnia.com/lab/chess): browser chess and Chess960 where code
 works out every legal move's facts and [TypeSafe AI](https://docs.typesafe.ai/api)'s Jev (System One) picks one per
 turn, as a single typed Choice over the legal moves.
 

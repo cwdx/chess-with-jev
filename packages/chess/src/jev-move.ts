@@ -1,17 +1,15 @@
 import { makeFen } from 'chessops/fen'
-import { sample, type JevQuestion, type JevResult } from '@cw/jev'
+import { sample, type JevAsk } from '@cw/jev'
 import { MAX_PLIES } from './games'
 import { afterMove, analyseMoves, headline, isSafe, legalMoves, PRIORITIES, replay, whiteChances } from './moves'
 
-// `ask` is any Jev client call: @cw/jev `jevAsk` with its keys, or one that also limits and records calls.
-export type JevAsk = (q: { state: unknown; questions: Record<string, JevQuestion>; timeoutMs?: number }) => Promise<JevResult | null>
 export type JevMoveInput = { start?: unknown; moves?: unknown; history?: unknown; variant?: unknown; level?: unknown }
 /** A game that cannot be played on from: not legal, or already over. */
 export class ChessInputError extends Error {}
 
 // temperatures for @cw/jev `sample`
 const LEVELS = { easy: 2, normal: 1, hard: 0 } as const
-const PLANS = {
+export const PLANS = {
   develop: 'Bring pieces out and castle', attack: 'Go after the enemy king', defend: 'Shore up threats against its own king',
   trade: 'Exchange pieces to simplify', push: 'Advance pawns for space or a passed pawn', win: 'Convert a material advantage',
 }
@@ -29,55 +27,43 @@ export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
 
   const side = p.turn === 'white' ? 'White' : 'Black'
   const t0 = Date.now()
-  if (facts.length === 1) {
-    const only = facts[0]!
-    return { uci: only.uci, san: only.san, candidates: [{ uci: only.uci, san: only.san, p: 1 }], confidence: 1, ms: Date.now() - t0, options: 1, forced: true, safe: isSafe(only), safeMoves: Number(isSafe(only)), reading: { eval: whiteChances(afterMove(p, only.move)) } }
+  // Above easy, code keeps the rules it can check: a mate is played, and only moves that lose nothing are offered.
+  // Easy keeps its slips: weaker is the point of it
+  const strict = temperature < LEVELS.easy
+  const safe = facts.filter(isSafe), unmated = facts.filter((f) => !f.allowsMate)
+  const mate = strict ? facts.find((f) => f.mates) ?? facts.find((f) => f.forcesMate) : undefined
+  const offered = !strict ? facts : safe.length ? safe : unmated.length ? unmated : facts
+  const only = facts.length === 1 ? 'legal' : mate ? 'mate' : offered.length === 1 ? 'safe' : undefined
+  if (only) {
+    const m = mate ?? offered[0]!
+    return { uci: m.uci, san: m.san, candidates: [{ uci: m.uci, san: m.san, p: 1 }], confidence: 1, ms: Date.now() - t0, options: moves.length, forced: only, safe: isSafe(m), safeMoves: safe.length, reading: { eval: whiteChances(afterMove(p, m.move)) } }
   }
   const state = { situation: headline(p, facts), game: body?.variant === 'chess' ? 'Chess' : 'Chess960 (Fischer random chess)', youPlay: side, position: makeFen(p.toSetup()), movesSoFar: history || 'none' }
-  const pickQuestion = {
-    type: 'choice' as const, criteria: Object.fromEntries(facts.map((f) => [f.uci, f.description])),
-    instructions: `You play ${side}. ${PRIORITIES}`,
-  }
   const r = await ask({
     state,
     questions: {
-      pick: pickQuestion,
+      pick: { type: 'choice', criteria: Object.fromEntries(offered.map((f) => [f.uci, f.description])), instructions: `You play ${side}. ${strict && offered !== facts ? `Only the moves that ${offered === safe ? 'lose nothing' : 'do not allow mate'} are offered. ` : ''}${PRIORITIES}` },
       risk: { type: 'noul', instructions: `Is ${side}'s king in danger?` },
       sharp: { type: 'score', instructions: 'How sharp is the position: how much does one move decide?', criteria: ['Quiet', 'Tense', 'Sharp'] },
       plan: { type: 'choice', instructions: `What is ${side}'s plan here?`, criteria: PLANS },
     },
     timeoutMs: 12000,
   })
-  let pick = r?.answers.pick
-  const choose = (answer: typeof pick) => {
-    const choice = answer?.probabilities ? sample(answer.probabilities, facts.map((f) => f.uci), temperature) ?? answer.choice : answer?.choice
-    return choice ? facts.find((m) => m.uci === choice) : undefined
-  }
-  let picked = choose(pick)
+  const pick = r?.answers.pick
+  const choice = pick?.probabilities ? sample(pick.probabilities, offered.map((f) => f.uci), temperature) ?? pick.choice : pick?.choice
+  const picked = offered.find((m) => m.uci === choice)
   if (!r || !pick || !picked) return null
-  // Easy keeps its slips: weaker is the point of it
-  let reasked = false
-  if (temperature < LEVELS.easy && !isSafe(picked) && facts.some(isSafe)) {
-    const again = await ask({
-      state: { ...state, warning: `Your first choice, ${picked.description}. Choose again: a move that loses nothing is available.` },
-      questions: { pick: pickQuestion },
-      timeoutMs: Math.max(0, 12000 - (Date.now() - t0)),
-    })
-    const secondPick = again?.answers.pick
-    const second = choose(secondPick)
-    if (secondPick && second && isSafe(second)) { picked = second; pick = secondPick; reasked = true }
-  }
   const probabilities = pick.probabilities ?? {}
   const candidates = moves.map((m) => ({ uci: m.uci, san: m.san, p: probabilities[m.uci] ?? 0 })).sort((a, b) => b.p - a.p).slice(0, 5)
   const a = r.answers
   return {
-    uci: picked.uci, san: picked.san, candidates, confidence: pick.confidence, model: r.model, via: r.via, ms: Date.now() - t0, options: moves.length,
-    safe: isSafe(picked), safeMoves: facts.filter(isSafe).length, reasked,
+    uci: picked.uci, san: picked.san, candidates, confidence: pick.confidence, model: r.model, via: r.via, ms: Date.now() - t0, options: moves.length, offered: offered.length,
+    safe: isSafe(picked), safeMoves: safe.length,
     reading: {
       eval: whiteChances(afterMove(p, picked.move)),
       kingRisk: a.risk?.noul,
       sharpness: typeof a.sharp?.score === 'number' ? a.sharp.score / 2 : undefined,
-      plan: a.plan?.choice,
+      plan: a.plan?.choice as keyof typeof PLANS | undefined,
     },
   }
 }
