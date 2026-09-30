@@ -8,9 +8,7 @@ export type JevRoute = 'gateway' | 'typesafe'
 export type JevKeys = { gateway?: string; typesafe?: string }
 /** `cost` is in US dollars: what the gateway reports, or for TypeSafe directly the input tokens at its list price. */
 export type JevResult = { answers: Record<string, JevAnswer>; model?: string; via: JevRoute; cost: number }
-/** `jevAsk` with its keys bound, or a wrapper that also limits and records calls. */
 export type JevAsk = (q: { state: unknown; questions: Record<string, JevQuestion>; timeoutMs?: number }) => Promise<JevResult | null>
-/** Told of every call once it is over: its result (null when no route answered) and how long it took. */
 export type JevObserver = (result: JevResult | null, ms: number) => void
 
 const ROUTES: Record<JevRoute, { url: string; model: string }> = {
@@ -18,20 +16,17 @@ const ROUTES: Record<JevRoute, { url: string; model: string }> = {
   typesafe: { url: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest' },
 }
 
-/** provider_metadata.gateway.cost, or undefined when the response does not say. */
 export function gatewayCost(body: unknown): number | undefined {
   const meta = isRecord(body) && isRecord(body.provider_metadata) && isRecord(body.provider_metadata.gateway) ? body.provider_metadata.gateway : undefined
   const cost = meta ? Number(meta.cost) : NaN
   return Number.isFinite(cost) ? cost : undefined
 }
 export const hasJev = (keys: JevKeys) => !!(keys.gateway || keys.typesafe)
-/** TypeSafe's list price: $0.042 per million input tokens, output free (docs.typesafe.ai, September 2026). */
 export const PRICE_PER_INPUT_TOKEN = 0.042 / 1e6
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
 
-/** Checked field by field: an unexpected shape answers null rather than half an answer. */
 export function parseAnswers(body: unknown): Pick<JevResult, 'answers' | 'model'> | null {
   if (!isRecord(body) || !isRecord(body.answers)) return null
   const answers: Record<string, JevAnswer> = {}
@@ -75,7 +70,6 @@ async function askVia(route: JevRoute, key: string, q: { state: unknown; questio
   return null
 }
 
-/** The gateway first when it has a key, TypeSafe directly as the fallback, within one time budget; null on any failure. */
 export async function jevAsk(keys: JevKeys, q: { state: unknown; questions: Record<string, JevQuestion>; timeoutMs?: number }, observe?: JevObserver): Promise<JevResult | null> {
   const t0 = Date.now()
   const deadline = t0 + (q.timeoutMs ?? 2500)
@@ -90,7 +84,6 @@ export async function jevAsk(keys: JevKeys, q: { state: unknown; questions: Reco
   return result
 }
 
-/** One `choice` question; null unless the answer is one of the options. */
 export async function jevChoose(keys: JevKeys, q: { state: unknown; instructions: string; criteria: Record<string, string>; timeoutMs?: number }, observe?: JevObserver): Promise<(JevChoice & { via: JevRoute }) | null> {
   const r = await jevAsk(keys, { state: q.state, questions: { pick: { type: 'choice', instructions: q.instructions, criteria: q.criteria } }, timeoutMs: q.timeoutMs }, observe)
   const pick = r?.answers.pick
@@ -98,7 +91,6 @@ export async function jevChoose(keys: JevKeys, q: { state: unknown; instructions
   return { choice: pick.choice, probabilities: pick.probabilities ?? {}, confidence: pick.confidence, model: r.model, via: r.via }
 }
 
-/** Temperature 0 is Jev's first choice; higher spreads wider, but only over options Jev gives at least 2%. */
 export function sample<T extends string>(probabilities: Partial<Record<T, number>>, keys: readonly T[], temperature: number): T | undefined {
   const weighted = keys.map((k) => [k, probabilities[k] ?? 0] as const).filter(([, q]) => q >= 0.02)
   if (!weighted.length) return

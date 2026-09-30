@@ -6,16 +6,12 @@ import type { Color, NormalMove, Role, Square } from 'chessops/types'
 import { makeUci, opposite, parseUci } from 'chessops/util'
 import { materialBalance, squareName, VALUE } from './rules'
 
-// Jev judges well but cannot calculate, so each move's facts are written with nothing left to add up (an exchange as
-// its net result), and with enough detail that no two moves read alike.
+// Jev judges but cannot calculate, so each move's facts arrive already added up.
 
 export type LegalMove = { uci: string; san: string; move: NormalMove }
 export type MoveFacts = LegalMove & {
-  /** Material the move wins at once (a capture, a promotion). */
   gain: number
-  /** The opponent's best capture in reply, played out as a full exchange. */
   reply?: { san: string; wins: number }
-  /** gain minus the reply's winnings: what the move is worth in material. */
   net: number
   mates: boolean
   allowsMate: 1 | 2 | undefined
@@ -26,19 +22,15 @@ export type MoveFacts = LegalMove & {
 
 const points = (n: number) => `${n} point${n === 1 ? '' : 's'}`
 const lastRank = (sq: Square) => sq >> 3 === 7 || sq >> 3 === 0
-/** Promotes to a queen on the last rank. */
 const moveOf = (p: Chess, from: Square, to: Square): NormalMove => ({ from, to, promotion: p.board.get(from)?.role === 'pawn' && lastRank(to) ? 'queen' : undefined })
-/** Leaves `p` as it was. */
 export function afterMove(p: Chess, move: NormalMove) { const x = p.clone(); x.play(move); return x }
 
-/** Undefined when the FEN is not a legal position. */
 export function positionFrom(fen: unknown) {
   const setup = parseFen(String(fen ?? ''))
   const pos = setup.isOk ? Chess.fromSetup(setup.value) : undefined
   return pos?.isOk ? pos.value : undefined
 }
 
-/** `seen` holds every position key, for repetition. Undefined if a move is illegal. */
 export function replay(start: unknown, ucis: unknown[]): { pos: Chess; seen: string[]; played: NormalMove[] } | undefined {
   const pos = positionFrom(start)
   if (!pos) return
@@ -54,7 +46,6 @@ export function replay(start: unknown, ucis: unknown[]): { pos: Chess; seen: str
 }
 export const positionKey = (p: Chess) => makeFen(p.toSetup()).split(' ').slice(0, 4).join(' ')
 
-/** Promotions offer a queen and a knight. */
 export function legalMoves(p: Chess): LegalMove[] {
   const moves: LegalMove[] = []
   for (const [from, tos] of p.allDests()) {
@@ -70,7 +61,6 @@ export function legalMoves(p: Chess): LegalMove[] {
   return moves
 }
 
-/** Cheapest capturing piece first. */
 function capturesOnto(p: Chess, sq: Square): NormalMove[] {
   const out: { move: NormalMove; v: number }[] = []
   for (const [from, tos] of p.allDests()) {
@@ -81,7 +71,6 @@ function capturesOnto(p: Chess, sq: Square): NormalMove[] {
   return out.sort((a, b) => a.v - b.v).map((x) => x.move)
 }
 
-/** Static exchange on `sq`, cheapest attacker first, each side free to stop when going on would lose. */
 function exchange(p: Chess, sq: Square, depth = 0): number {
   const target = p.board.get(sq)
   if (!target || target.color === p.turn || depth > 12) return 0
@@ -90,7 +79,6 @@ function exchange(p: Chess, sq: Square, depth = 0): number {
   return Math.max(0, VALUE[target.role] + (first.promotion ? VALUE.queen - VALUE.pawn : 0) - exchange(afterMove(p, first), sq, depth + 1))
 }
 
-/** The side to move's most profitable capture anywhere, as an exchange. */
 function bestCapture(p: Chess): { san: string; wins: number } | undefined {
   let best: { san: string; wins: number } | undefined
   for (const sq of p.board[opposite(p.turn)]) {
@@ -105,7 +93,6 @@ function hasMateInOne(p: Chess): boolean {
   return false
 }
 
-/** Checks only, to stay cheap. */
 function hasMateInTwo(p: Chess): boolean {
   for (const [from, tos] of p.allDests()) {
     for (const to of tos) {
@@ -123,7 +110,6 @@ function everyReplyAllowsMate(p: Chess): boolean {
 
 const homeRank = (c: Color) => (c === 'white' ? 0 : 7)
 
-/** `seen`: the game's earlier positions (for repetition); `ownLast`: the mover's previous move (to spot one undone). */
 export function analyseMoves(p: Chess, moves: LegalMove[], opts: { seen?: string[]; ownLast?: NormalMove } = {}): MoveFacts[] {
   const us = p.turn, them = opposite(us)
   return moves.map((m) => {
@@ -138,7 +124,6 @@ export function analyseMoves(p: Chess, moves: LegalMove[], opts: { seen?: string
     const allowsMate = mates || after.isEnd() ? undefined : hasMateInOne(after) ? 1 : hasMateInTwo(after) ? 2 : undefined
     const forcesMate = !mates && after.isCheck() && !after.isEnd() && everyReplyAllowsMate(after)
 
-    // castling's "to" is the rook, so it has no landing square
     const landed = after.board.get(castles ? move.from : move.to)
     const at = castles ? undefined : move.to
     const attackers = at === undefined ? 0 : after.kingAttackers(at, them, after.board.occupied).size()
@@ -181,10 +166,8 @@ export function analyseMoves(p: Chess, moves: LegalMove[], opts: { seen?: string
   })
 }
 
-/** A move loses nothing: no material given away, no mate allowed. */
 export const isSafe = (f: MoveFacts) => f.mates || (f.net >= 0 && !f.allowsMate && !f.stalemates)
 
-/** The line Jev reads first; a mate, if there is one, alone. */
 export function headline(p: Chess, facts: MoveFacts[]): string {
   const side = p.turn === 'white' ? 'White (the UPPERCASE pieces)' : 'Black (the lowercase pieces)'
   const mate = facts.find((f) => f.mates)
@@ -195,7 +178,6 @@ export function headline(p: Chess, facts: MoveFacts[]): string {
   return `You are ${side}${p.isCheck() ? ', and you are in check' : ''}. ${standing}. ${facts.length} legal move${facts.length === 1 ? '' : 's'}; ${safe === facts.length ? 'none loses material' : `${safe} of them lose${safe === 1 ? 's' : ''} nothing`}.`
 }
 
-/** White's winning chances, 0–1, worked out rather than asked (Jev cannot count): material plus the side to move's best capture, through the usual winning-chances curve. */
 export function whiteChances(p: Chess): number {
   if (p.isCheckmate()) return p.turn === 'white' ? 0 : 1
   if (p.isEnd()) return 0.5

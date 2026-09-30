@@ -4,7 +4,6 @@ import { MAX_PLIES } from './games'
 import { afterMove, analyseMoves, headline, isSafe, legalMoves, PRIORITIES, replay, whiteChances } from './moves'
 
 export type JevMoveInput = { start?: unknown; moves?: unknown; history?: unknown; variant?: unknown; level?: unknown }
-/** A game that cannot be played on from: not legal, or already over. */
 export class ChessInputError extends Error {}
 
 const LEVELS = { easy: 2, normal: 1, hard: 0 } as const
@@ -13,7 +12,6 @@ const PLANS = {
   trade: 'Exchange pieces to simplify', push: 'Advance pawns for space or a passed pawn', win: 'Convert a material advantage',
 }
 
-/** Jev's move in the game `body` describes, at its level (easy, normal, hard); null if Jev did not answer. */
 export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
   const temperature = LEVELS[String(body?.level) as keyof typeof LEVELS] ?? LEVELS.hard
   const game = Array.isArray(body?.moves) && body.moves.length <= MAX_PLIES ? replay(body.start, body.moves) : undefined
@@ -26,8 +24,6 @@ export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
 
   const side = p.turn === 'white' ? 'White' : 'Black'
   const t0 = Date.now()
-  // Above easy, code keeps the rules it can check: a mate is played, and only moves that lose nothing are offered.
-  // Easy keeps its slips: weaker is the point of it
   const strict = temperature < LEVELS.easy
   const safe = facts.filter(isSafe), unmated = facts.filter((f) => !f.allowsMate)
   const mate = strict ? facts.find((f) => f.mates) ?? facts.find((f) => f.forcesMate) : undefined

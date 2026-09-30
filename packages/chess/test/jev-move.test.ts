@@ -3,9 +3,7 @@ import type { JevAsk, JevQuestion } from '@cw/jev'
 import { jevMove } from '../src/jev-move'
 import { analyseMoves, isSafe, legalMoves, positionFrom } from '../src/moves'
 
-// White to move: Qxf7 mates; Qf3 is also attacked, so some moves hang the queen
 const MATE = 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1'
-// the same without the bishop on c4: no mate, and Qxf7 now loses the queen
 const QUIET = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1'
 
 type Asked = Parameters<JevAsk>[0]

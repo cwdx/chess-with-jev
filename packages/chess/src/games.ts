@@ -32,7 +32,6 @@ function ending(pos: Chess, seen: string[]): { winner?: 'white' | 'black'; reaso
   if (seen.filter((k) => k === seen.at(-1)).length >= 3) return { reason: 'Threefold repetition' }
 }
 
-/** Undefined unless every move is legal and the game is over. */
 export function scoreGame(n: number, moves: unknown): ScoredGame | undefined {
   if (!isPositionId(n) || !Array.isArray(moves) || !moves.length || moves.length > MAX_PLIES) return
   const pos = positionFrom(startFen(backRank(n)))
