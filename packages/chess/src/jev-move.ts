@@ -7,7 +7,6 @@ export type JevMoveInput = { start?: unknown; moves?: unknown; history?: unknown
 /** A game that cannot be played on from: not legal, or already over. */
 export class ChessInputError extends Error {}
 
-// temperatures for @cw/jev `sample`
 const LEVELS = { easy: 2, normal: 1, hard: 0 } as const
 const PLANS = {
   develop: 'Bring pieces out and castle', attack: 'Go after the enemy king', defend: 'Shore up threats against its own king',

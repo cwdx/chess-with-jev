@@ -6,12 +6,10 @@ import { parseUci } from 'chessops/util'
 import { positionFrom, positionKey } from './moves'
 import { backRank, isPositionId, materialBalance, startFen } from './rules'
 
-// Replayed and scored here, so a record is only ever a legal game that really ended, whatever a client says.
 export const GAME_MODES = ['jev', 'simple', 'friend', 'jev-jev', 'jev-simple'] as const
 export type GameMode = (typeof GAME_MODES)[number]
 export type Seat = 'human' | 'jev' | 'simple'
 export type GameResult = '1-0' | '0-1' | '1/2-1/2'
-// either way round
 const SEATS: Record<GameMode, string> = { 'jev': 'human jev', 'simple': 'human simple', 'friend': 'human human', 'jev-jev': 'jev jev', 'jev-simple': 'jev simple' }
 export const seatsFit = (mode: GameMode, white: Seat, black: Seat) => [white, black].sort().join(' ') === SEATS[mode].split(' ').sort().join(' ')
 export const MAX_PLIES = 600

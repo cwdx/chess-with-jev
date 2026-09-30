@@ -104,6 +104,6 @@ export function materialStory(balance: number[], sans: string[], winner?: 'white
   if (s * balance[from]! <= 0) return { marks, summary: `${mate} No material lead needed.` }
   const most = Math.max(...balance.slice(from).map((b) => s * b))
   if (most < 3) return { marks, summary: mate }
-  const ply = from - 1 // the move that put the winner ahead
+  const ply = from - 1
   return { marks, summary: `${mate} Ahead from move ${Math.floor(ply / 2) + 1} (${sans[ply]}), by up to ${most} points.` }
 }

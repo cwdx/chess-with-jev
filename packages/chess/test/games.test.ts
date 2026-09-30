@@ -11,7 +11,7 @@ describe('chess games', () => {
     expect(g).toMatchObject({ result: '0-1', reason: 'Checkmate', winner: 'black', sans: ['f3', 'e5', 'g4', 'Qh4#'] })
     expect(g.squares.filter(Boolean)).toHaveLength(32)
     expect(g.balance).toHaveLength(5)
-    expect(g.check).toBe(4) // the white king on e1
+    expect(g.check).toBe(4)
   })
   it('keeps no game that is unfinished, illegal or out of range', () => {
     expect(scoreGame(STANDARD, FOOLS_MATE.slice(0, 3))).toBeUndefined()

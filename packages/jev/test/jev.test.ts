@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { gatewayCost, hasJev, parseAnswers, sample } from '../src/index'
 
-// The two routes' real responses to the same question (curl, 25 September 2026), trimmed: TypeSafe directly, and the
-// AI Gateway, which adds its routing metadata.
+// Real responses of both routes to one question, trimmed; the gateway adds routing metadata.
 const DIRECT = { model: 'jev-1.13.0', answers: { pick: { type: 'choice', choice: 'e2e4', confidence: 0.99, probabilities: { g1f3: 0.01, e2e4: 0.99 } }, risk: { type: 'noul', noul: 0.17 } }, usage: { input_tokens: 345, output_tokens: 57 } }
 const GATEWAY = { ...DIRECT, model: 'typesafe-ai/jev', provider_metadata: { typesafe: { confidence: { pick: 0.98 } }, gateway: { routing: { finalProvider: 'typesafe-ai' } } } }
 

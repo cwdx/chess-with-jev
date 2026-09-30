@@ -1,4 +1,3 @@
-// Any failure answers null, so callers keep working without Jev. The gateway's extra routing metadata is ignored.
 export type JevQuestion
   = | { type: 'choice'; instructions: string; criteria: Record<string, string> }
     | { type: 'score'; instructions: string; criteria: string[] }
@@ -76,7 +75,7 @@ async function askVia(route: JevRoute, key: string, q: { state: unknown; questio
   return null
 }
 
-/** The gateway first when it has a key, TypeSafe directly as the fallback, within one time budget. */
+/** The gateway first when it has a key, TypeSafe directly as the fallback, within one time budget; null on any failure. */
 export async function jevAsk(keys: JevKeys, q: { state: unknown; questions: Record<string, JevQuestion>; timeoutMs?: number }, observe?: JevObserver): Promise<JevResult | null> {
   const t0 = Date.now()
   const deadline = t0 + (q.timeoutMs ?? 2500)
