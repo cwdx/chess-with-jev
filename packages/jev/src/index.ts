@@ -41,7 +41,7 @@ export function parseAnswers(body: unknown): Pick<JevResult, 'answers' | 'model'
   return { answers, model: typeof body.model === 'string' ? body.model : undefined }
 }
 
-async function askVia(route: JevRoute, key: string, q: { state: unknown; questions: Record<string, JevQuestion> }, deadline: number) {
+async function askVia(route: JevRoute, key: string, q: { state: unknown; questions: Record<string, JevQuestion> }, deadline: number, imageBase64?: string) {
   const { url, model } = ROUTES[route]
   for (let attempt = 0; attempt < 2; attempt++) {
     const left = deadline - Date.now()
@@ -49,8 +49,12 @@ async function askVia(route: JevRoute, key: string, q: { state: unknown; questio
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'authorization': `Bearer ${key}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ model, state: q.state, questions: q.questions }),
+        headers: { 'authorization': `Bearer ${key}`, 'content-type': 'application/json', ...(imageBase64 ? { 'TypeSafe-Danger-Zone-Images': 'true' } : {}) },
+        body: JSON.stringify({
+          model: imageBase64 ? 'jev-preview' : model,
+          state: q.state, questions: q.questions,
+          ...(imageBase64 ? { assets: { '<image:primary>': { type: 'image', format: 'png', data_base64: imageBase64 } } } : {}),
+        }),
         signal: AbortSignal.timeout(left),
       })
       if (res.ok) {
@@ -82,6 +86,22 @@ export async function jevAsk(keys: JevKeys, q: { state: unknown; questions: Reco
   }
   observe?.(result, Date.now() - t0)
   return result
+}
+
+/** Experimental: evaluate a PNG as a genuine Jev image. Direct TypeSafe only, never the text-only gateway. */
+export async function jevAskImage(
+  keys: JevKeys,
+  q: { state: Record<string, unknown>; imageBase64: string; questions: Record<string, JevQuestion>; timeoutMs?: number },
+  observe?: JevObserver,
+): Promise<JevResult | null> {
+  const t0 = Date.now()
+  const deadline = t0 + (q.timeoutMs ?? 5000)
+  const result = keys.typesafe
+    ? await askVia('typesafe', keys.typesafe, { state: { ...q.state, image: '<image:primary>' }, questions: q.questions }, deadline, q.imageBase64)
+    : null
+  const answer = result ? { ...result, via: 'typesafe' as const } : null
+  observe?.(answer, Date.now() - t0)
+  return answer
 }
 
 export async function jevChoose(keys: JevKeys, q: { state: unknown; instructions: string; criteria: Record<string, string>; timeoutMs?: number }, observe?: JevObserver): Promise<(JevChoice & { via: JevRoute }) | null> {
