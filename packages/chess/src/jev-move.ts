@@ -5,6 +5,22 @@ import { afterMove, analyseMoves, headline, isSafe, legalMoves, PRIORITIES, repl
 
 export type JevMoveInput = { start?: unknown; moves?: unknown; history?: unknown; variant?: unknown; level?: unknown }
 export class ChessInputError extends Error {}
+/** Jev's move: a forced one (the only legal move) carries no model, offer count or plan. */
+export type JevMove = {
+  uci: string
+  san: string
+  candidates: { uci: string; san: string; p: number }[]
+  confidence?: number
+  model?: string
+  via?: string
+  ms: number
+  options: number
+  offered?: number
+  forced?: 'legal' | 'mate' | 'safe'
+  safe: boolean
+  safeMoves: number
+  reading: { eval: number; kingRisk?: number; sharpness?: number; plan?: string }
+}
 
 const LEVELS = { easy: 2, normal: 1, hard: 0 } as const
 const PLANS = {
@@ -12,7 +28,7 @@ const PLANS = {
   trade: 'Exchange pieces to simplify', push: 'Advance pawns for space or a passed pawn', win: 'Convert a material advantage',
 }
 
-export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined) {
+export async function jevMove(ask: JevAsk, body: JevMoveInput | undefined): Promise<JevMove | null> {
   const temperature = LEVELS[String(body?.level) as keyof typeof LEVELS] ?? LEVELS.hard
   const game = Array.isArray(body?.moves) && body.moves.length <= MAX_PLIES ? replay(body.start, body.moves) : undefined
   if (!game) throw new ChessInputError('Not a legal game')
