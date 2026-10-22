@@ -1,14 +1,14 @@
-import type { Seat } from './games'
+import type { Seat } from "./games"
 
-type Colour = 'white' | 'black'
-const NAME: Record<Seat, string> = { human: 'a person', jev: 'Jev', simple: 'the simple engine' }
+type Colour = "white" | "black"
+const NAME: Record<Seat, string> = { human: "a person", jev: "Jev", simple: "the simple engine" }
 const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1)
 
 export function gameHeadline(white: Seat, black: Seat, winner?: Colour): string {
   const name = (c: Colour) => {
-    const seat = c === 'white' ? white : black
+    const seat = c === "white" ? white : black
     return white === black ? `${cap(c)} (${NAME[seat]})` : NAME[seat]
   }
-  if (!winner) return `A draw between ${name('white')} and ${name('black')}.`
-  return `${cap(name(winner))} beat ${name(winner === 'white' ? 'black' : 'white')}.`
+  if (!winner) return `A draw between ${name("white")} and ${name("black")}.`
+  return `${cap(name(winner))} beat ${name(winner === "white" ? "black" : "white")}.`
 }

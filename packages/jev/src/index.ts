@@ -1,10 +1,10 @@
 export type JevQuestion
-  = | { type: 'choice'; instructions: string; criteria: Record<string, string> }
-    | { type: 'score'; instructions: string; criteria: string[] }
-    | { type: 'noul'; instructions: string }
-export type JevAnswer = { type?: 'choice' | 'score' | 'noul'; choice?: string; score?: number; noul?: number; probabilities?: Record<string, number>; confidence?: number }
+  = | { type: "choice"; instructions: string; criteria: Record<string, string> }
+    | { type: "score"; instructions: string; criteria: string[] }
+    | { type: "noul"; instructions: string }
+export type JevAnswer = { type?: "choice" | "score" | "noul"; choice?: string; score?: number; noul?: number; probabilities?: Record<string, number>; confidence?: number }
 export type JevChoice = { choice: string; probabilities: Record<string, number>; confidence?: number; model?: string }
-export type JevRoute = 'gateway' | 'typesafe'
+export type JevRoute = "gateway" | "typesafe"
 export type JevKeys = { gateway?: string; typesafe?: string }
 /** `cost` is in US dollars: what the gateway reports, or for TypeSafe directly the input tokens at its list price. */
 export type JevResult = { answers: Record<string, JevAnswer>; model?: string; via: JevRoute; cost: number }
@@ -12,8 +12,8 @@ export type JevAsk = (q: { state: unknown; questions: Record<string, JevQuestion
 export type JevObserver = (result: JevResult | null, ms: number) => void
 
 const ROUTES: Record<JevRoute, { url: string; model: string }> = {
-  gateway: { url: 'https://ai-gateway.vercel.sh/typesafe/v1/systemone', model: 'typesafe-ai/jev' },
-  typesafe: { url: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest' },
+  gateway: { url: "https://ai-gateway.vercel.sh/typesafe/v1/systemone", model: "typesafe-ai/jev" },
+  typesafe: { url: "https://api.typesafe.ai/v1/systemone", model: "jev-latest" },
 }
 
 export function gatewayCost(body: unknown): number | undefined {
@@ -24,21 +24,21 @@ export function gatewayCost(body: unknown): number | undefined {
 export const hasJev = (keys: JevKeys) => !!(keys.gateway || keys.typesafe)
 export const PRICE_PER_INPUT_TOKEN = 0.042 / 1e6
 
-const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
-const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v)
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined)
 
-export function parseAnswers(body: unknown): Pick<JevResult, 'answers' | 'model'> | null {
+export function parseAnswers(body: unknown): Pick<JevResult, "answers" | "model"> | null {
   if (!isRecord(body) || !isRecord(body.answers)) return null
   const answers: Record<string, JevAnswer> = {}
   for (const [id, raw] of Object.entries(body.answers)) {
     if (!isRecord(raw)) continue
-    const type = raw.type === 'choice' || raw.type === 'score' || raw.type === 'noul' ? raw.type : undefined
+    const type = raw.type === "choice" || raw.type === "score" || raw.type === "noul" ? raw.type : undefined
     const probabilities = isRecord(raw.probabilities)
       ? Object.fromEntries(Object.entries(raw.probabilities).flatMap(([k, p]) => { const v = num(p); return v === undefined ? [] : [[k, v]] }))
       : undefined
-    answers[id] = { type, choice: typeof raw.choice === 'string' ? raw.choice : undefined, score: num(raw.score), noul: num(raw.noul), probabilities, confidence: num(raw.confidence) }
+    answers[id] = { type, choice: typeof raw.choice === "string" ? raw.choice : undefined, score: num(raw.score), noul: num(raw.noul), probabilities, confidence: num(raw.confidence) }
   }
-  return { answers, model: typeof body.model === 'string' ? body.model : undefined }
+  return { answers, model: typeof body.model === "string" ? body.model : undefined }
 }
 
 async function askVia(route: JevRoute, key: string, q: { state: unknown; questions: Record<string, JevQuestion> }, deadline: number, imageBase64?: string) {
@@ -48,27 +48,27 @@ async function askVia(route: JevRoute, key: string, q: { state: unknown; questio
     if (left < 300) return null
     try {
       const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'authorization': `Bearer ${key}`, 'content-type': 'application/json', ...(imageBase64 ? { 'TypeSafe-Danger-Zone-Images': 'true' } : {}) },
+        method: "POST",
+        headers: { "authorization": `Bearer ${key}`, "content-type": "application/json", ...(imageBase64 ? { "TypeSafe-Danger-Zone-Images": "true" } : {}) },
         body: JSON.stringify({
-          model: imageBase64 ? 'jev-preview' : model,
+          model: imageBase64 ? "jev-preview" : model,
           state: q.state, questions: q.questions,
-          ...(imageBase64 ? { assets: { '<image:primary>': { type: 'image', format: 'png', data_base64: imageBase64 } } } : {}),
+          ...(imageBase64 ? { assets: { "<image:primary>": { type: "image", format: "png", data_base64: imageBase64 } } } : {}),
         }),
         signal: AbortSignal.timeout(left),
       })
       if (res.ok) {
         const body = await res.json()
-        const reported = route === 'gateway' ? gatewayCost(body) : undefined
+        const reported = route === "gateway" ? gatewayCost(body) : undefined
         const parsed = parseAnswers(body)
         const tokens = isRecord(body) && isRecord(body.usage) ? num(body.usage.input_tokens) ?? 0 : 0
         return parsed && { ...parsed, cost: reported ?? tokens * PRICE_PER_INPUT_TOKEN }
       }
-      const wait = res.status === 429 ? Number(res.headers.get('retry-after') ?? NaN) * 1000 : res.status >= 500 ? 200 : NaN
+      const wait = res.status === 429 ? Number(res.headers.get("retry-after") ?? NaN) * 1000 : res.status >= 500 ? 200 : NaN
       if (!(wait >= 0) || Date.now() + wait > deadline - 300) return null
       await new Promise((r) => setTimeout(r, wait))
     } catch (e) {
-      if ((e as Error).name === 'TimeoutError') return null
+      if ((e as Error).name === "TimeoutError") return null
     }
   }
   return null
@@ -78,7 +78,7 @@ export async function jevAsk(keys: JevKeys, q: { state: unknown; questions: Reco
   const t0 = Date.now()
   const deadline = t0 + (q.timeoutMs ?? 2500)
   let result: JevResult | null = null
-  for (const route of ['gateway', 'typesafe'] as const) {
+  for (const route of ["gateway", "typesafe"] as const) {
     const key = keys[route]
     if (!key) continue
     const r = await askVia(route, key, q, deadline)
@@ -97,15 +97,15 @@ export async function jevAskImage(
   const t0 = Date.now()
   const deadline = t0 + (q.timeoutMs ?? 5000)
   const result = keys.typesafe
-    ? await askVia('typesafe', keys.typesafe, { state: { ...q.state, image: '<image:primary>' }, questions: q.questions }, deadline, q.imageBase64)
+    ? await askVia("typesafe", keys.typesafe, { state: { ...q.state, image: "<image:primary>" }, questions: q.questions }, deadline, q.imageBase64)
     : null
-  const answer = result ? { ...result, via: 'typesafe' as const } : null
+  const answer = result ? { ...result, via: "typesafe" as const } : null
   observe?.(answer, Date.now() - t0)
   return answer
 }
 
 export async function jevChoose(keys: JevKeys, q: { state: unknown; instructions: string; criteria: Record<string, string>; timeoutMs?: number }, observe?: JevObserver): Promise<(JevChoice & { via: JevRoute }) | null> {
-  const r = await jevAsk(keys, { state: q.state, questions: { pick: { type: 'choice', instructions: q.instructions, criteria: q.criteria } }, timeoutMs: q.timeoutMs }, observe)
+  const r = await jevAsk(keys, { state: q.state, questions: { pick: { type: "choice", instructions: q.instructions, criteria: q.criteria } }, timeoutMs: q.timeoutMs }, observe)
   const pick = r?.answers.pick
   if (!r || !pick?.choice || !(pick.choice in q.criteria)) return null
   return { choice: pick.choice, probabilities: pick.probabilities ?? {}, confidence: pick.confidence, model: r.model, via: r.via }

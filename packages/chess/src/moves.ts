@@ -1,10 +1,10 @@
-import { attacks } from 'chessops/attacks'
-import { Chess } from 'chessops/chess'
-import { makeFen, parseFen } from 'chessops/fen'
-import { makeSan } from 'chessops/san'
-import type { Color, NormalMove, Role, Square } from 'chessops/types'
-import { makeUci, opposite, parseUci } from 'chessops/util'
-import { materialBalance, squareName, VALUE } from './rules'
+import { attacks } from "chessops/attacks"
+import { Chess } from "chessops/chess"
+import { makeFen, parseFen } from "chessops/fen"
+import { makeSan } from "chessops/san"
+import type { Color, NormalMove, Role, Square } from "chessops/types"
+import { makeUci, opposite, parseUci } from "chessops/util"
+import { materialBalance, squareName, VALUE } from "./rules"
 
 // Jev judges but cannot calculate, so each move's facts arrive already added up.
 
@@ -20,13 +20,13 @@ export type MoveFacts = LegalMove & {
   description: string
 }
 
-const points = (n: number) => `${n} point${n === 1 ? '' : 's'}`
+const points = (n: number) => `${n} point${n === 1 ? "" : "s"}`
 const lastRank = (sq: Square) => sq >> 3 === 7 || sq >> 3 === 0
-const moveOf = (p: Chess, from: Square, to: Square): NormalMove => ({ from, to, promotion: p.board.get(from)?.role === 'pawn' && lastRank(to) ? 'queen' : undefined })
+const moveOf = (p: Chess, from: Square, to: Square): NormalMove => ({ from, to, promotion: p.board.get(from)?.role === "pawn" && lastRank(to) ? "queen" : undefined })
 export function afterMove(p: Chess, move: NormalMove) { const x = p.clone(); x.play(move); return x }
 
 export function positionFrom(fen: unknown) {
-  const setup = parseFen(String(fen ?? ''))
+  const setup = parseFen(String(fen ?? ""))
   const pos = setup.isOk ? Chess.fromSetup(setup.value) : undefined
   return pos?.isOk ? pos.value : undefined
 }
@@ -44,14 +44,14 @@ export function replay(start: unknown, ucis: unknown[]): { pos: Chess; seen: str
   }
   return { pos, seen, played }
 }
-export const positionKey = (p: Chess) => makeFen(p.toSetup()).split(' ').slice(0, 4).join(' ')
+export const positionKey = (p: Chess) => makeFen(p.toSetup()).split(" ").slice(0, 4).join(" ")
 
 export function legalMoves(p: Chess): LegalMove[] {
   const moves: LegalMove[] = []
   for (const [from, tos] of p.allDests()) {
     const piece = p.board.get(from)!
     for (const to of tos) {
-      const promo = piece.role === 'pawn' && lastRank(to) ? (['queen', 'knight'] as Role[]) : [undefined]
+      const promo = piece.role === "pawn" && lastRank(to) ? (["queen", "knight"] as Role[]) : [undefined]
       for (const promotion of promo) {
         const move: NormalMove = { from, to, promotion }
         moves.push({ uci: makeUci(move), san: makeSan(p, move), move })
@@ -108,14 +108,14 @@ function everyReplyAllowsMate(p: Chess): boolean {
   return true
 }
 
-const homeRank = (c: Color) => (c === 'white' ? 0 : 7)
+const homeRank = (c: Color) => (c === "white" ? 0 : 7)
 
 export function analyseMoves(p: Chess, moves: LegalMove[], opts: { seen?: string[]; ownLast?: NormalMove } = {}): MoveFacts[] {
   const us = p.turn, them = opposite(us)
   return moves.map((m) => {
     const { move, san } = m
     const piece = p.board.get(move.from)!, taken = p.board.get(move.to)
-    const castles = san.startsWith('O-O')
+    const castles = san.startsWith("O-O")
     const gain = (taken && taken.color !== us ? VALUE[taken.role] : 0) + (move.promotion ? VALUE[move.promotion] - VALUE.pawn : 0)
     const after = afterMove(p, move)
     const mates = after.isCheckmate(), stalemates = after.isStalemate()
@@ -132,58 +132,58 @@ export function analyseMoves(p: Chess, moves: LegalMove[], opts: { seen?: string
     if (landed && at !== undefined && !mates) {
       for (const sq of attacks(landed, at, after.board.occupied).intersect(after.board[them])) {
         const target = after.board.get(sq)!
-        if (target.role === 'king') continue
+        if (target.role === "king") continue
         const defended = after.kingAttackers(sq, them, after.board.occupied).nonEmpty()
         if (VALUE[target.role] > VALUE[landed.role] || !defended) threats.push(`the ${target.role} on ${squareName(sq)}`)
       }
     }
-    const develops = (piece.role === 'knight' || piece.role === 'bishop') && move.from >> 3 === homeRank(us) && move.to >> 3 !== homeRank(us)
+    const develops = (piece.role === "knight" || piece.role === "bishop") && move.from >> 3 === homeRank(us) && move.to >> 3 !== homeRank(us)
     const undoes = !!opts.ownLast && opts.ownLast.from === move.to && opts.ownLast.to === move.from
     const repeats = opts.seen ? opts.seen.filter((k) => k === positionKey(after)).length : 0
 
     const notes: string[] = []
-    if (mates) notes.push('CHECKMATE, wins the game')
+    if (mates) notes.push("CHECKMATE, wins the game")
     else {
-      notes.push(castles ? 'castles' : `${piece.role} to ${squareName(move.to)}`)
+      notes.push(castles ? "castles" : `${piece.role} to ${squareName(move.to)}`)
       if (taken && taken.color !== us) notes.push(`takes a ${taken.role} (${points(VALUE[taken.role])})`)
       if (move.promotion) notes.push(`promotes to a ${move.promotion}`)
-      if (after.isCheck()) notes.push('gives check')
-      if (forcesMate) notes.push('forces checkmate next move')
-      if (stalemates) notes.push('STALEMATE: the game is drawn at once')
-      if (allowsMate === 1) notes.push('LOSES: lets the opponent checkmate next move')
-      else if (allowsMate === 2) notes.push('LOSES: lets the opponent force checkmate in two')
+      if (after.isCheck()) notes.push("gives check")
+      if (forcesMate) notes.push("forces checkmate next move")
+      if (stalemates) notes.push("STALEMATE: the game is drawn at once")
+      if (allowsMate === 1) notes.push("LOSES: lets the opponent checkmate next move")
+      else if (allowsMate === 2) notes.push("LOSES: lets the opponent force checkmate in two")
       if (reply) {
-        const overall = net < 0 ? `leaving you ${points(-net)} down overall, a blunder` : net > 0 ? `leaving you ${points(net)} up overall` : 'which only evens it out'
+        const overall = net < 0 ? `leaving you ${points(-net)} down overall, a blunder` : net > 0 ? `leaving you ${points(net)} up overall` : "which only evens it out"
         notes.push(`but then the opponent wins ${points(reply.wins)} with ${reply.san}, ${overall}`)
       } else if (gain > 0) notes.push(`wins ${points(gain)} safely`)
-      if (at !== undefined && landed && landed.role !== 'king' && !reply) notes.push(attackers ? `lands attacked by ${attackers}, defended by ${defenders}` : 'lands on a safe square')
-      if (threats.length) notes.push(`threatens ${threats.join(' and ')}`)
-      if (develops) notes.push('develops a piece')
-      if (undoes) notes.push('undoes your last move')
-      if (repeats) notes.push(`repeats a position already seen ${repeats === 1 ? 'once' : `${repeats} times`}`)
+      if (at !== undefined && landed && landed.role !== "king" && !reply) notes.push(attackers ? `lands attacked by ${attackers}, defended by ${defenders}` : "lands on a safe square")
+      if (threats.length) notes.push(`threatens ${threats.join(" and ")}`)
+      if (develops) notes.push("develops a piece")
+      if (undoes) notes.push("undoes your last move")
+      if (repeats) notes.push(`repeats a position already seen ${repeats === 1 ? "once" : `${repeats} times`}`)
     }
-    return { ...m, gain, reply, net, mates, allowsMate, forcesMate, stalemates, description: `${san}: ${notes.join('; ')}` }
+    return { ...m, gain, reply, net, mates, allowsMate, forcesMate, stalemates, description: `${san}: ${notes.join("; ")}` }
   })
 }
 
 export const isSafe = (f: MoveFacts) => f.mates || (f.net >= 0 && !f.allowsMate && !f.stalemates)
 
 export function headline(p: Chess, facts: MoveFacts[]): string {
-  const side = p.turn === 'white' ? 'White (the UPPERCASE pieces)' : 'Black (the lowercase pieces)'
+  const side = p.turn === "white" ? "White (the UPPERCASE pieces)" : "Black (the lowercase pieces)"
   const mate = facts.find((f) => f.mates)
   if (mate) return `You are ${side}. CHECKMATE IS AVAILABLE THIS MOVE: ${mate.san}. Nothing else in this position matters.`
   const safe = facts.filter(isSafe).length
-  const material = (p.turn === 'white' ? 1 : -1) * materialBalance(p)
-  const standing = material === 0 ? 'Material is even' : material > 0 ? `You are ${points(material)} up in material` : `You are ${points(-material)} down in material`
-  return `You are ${side}${p.isCheck() ? ', and you are in check' : ''}. ${standing}. ${facts.length} legal move${facts.length === 1 ? '' : 's'}; ${safe === facts.length ? 'none loses material' : `${safe} of them lose${safe === 1 ? 's' : ''} nothing`}.`
+  const material = (p.turn === "white" ? 1 : -1) * materialBalance(p)
+  const standing = material === 0 ? "Material is even" : material > 0 ? `You are ${points(material)} up in material` : `You are ${points(-material)} down in material`
+  return `You are ${side}${p.isCheck() ? ", and you are in check" : ""}. ${standing}. ${facts.length} legal move${facts.length === 1 ? "" : "s"}; ${safe === facts.length ? "none loses material" : `${safe} of them lose${safe === 1 ? "s" : ""} nothing`}.`
 }
 
 export function whiteChances(p: Chess): number {
-  if (p.isCheckmate()) return p.turn === 'white' ? 0 : 1
+  if (p.isCheckmate()) return p.turn === "white" ? 0 : 1
   if (p.isEnd()) return 0.5
   const capture = bestCapture(p)?.wins ?? 0
-  const cp = 100 * (materialBalance(p) + (p.turn === 'white' ? capture : -capture))
+  const cp = 100 * (materialBalance(p) + (p.turn === "white" ? capture : -capture))
   return 1 / (1 + Math.exp(-0.00368208 * cp))
 }
 
-export const PRIORITIES = 'Choose the best move for you. Priorities, in order: 1. deliver checkmate, or force it; 2. never allow checkmate; 3. do not lose material (avoid every move marked "down overall"); 4. win material when it is safe; 5. then make progress: develop your pieces, castle, take the centre, create threats. Do not shuffle a piece back and forth or repeat positions unless you are losing.'
+export const PRIORITIES = "Choose the best move for you. Priorities, in order: 1. deliver checkmate, or force it; 2. never allow checkmate; 3. do not lose material (avoid every move marked \"down overall\"); 4. win material when it is safe; 5. then make progress: develop your pieces, castle, take the centre, create threats. Do not shuffle a piece back and forth or repeat positions unless you are losing."
