@@ -29,8 +29,11 @@ describe("Jev experimental image input", () => {
   })
   it("never sends an experimental image through an ordinary gateway key", async () => {
     const fetch = vi.spyOn(globalThis, "fetch")
-    expect(await jevAskImage({ gateway: "gateway" }, { state: {}, imageBase64: "aGVsbG8=", questions: {} })).toBeNull()
-    expect(fetch).not.toHaveBeenCalled()
-    fetch.mockRestore()
+    try {
+      expect(await jevAskImage({ gateway: "gateway" }, { state: {}, imageBase64: "aGVsbG8=", questions: {} })).toBeNull()
+      expect(fetch).not.toHaveBeenCalled()
+    } finally {
+      fetch.mockRestore()
+    }
   })
 })

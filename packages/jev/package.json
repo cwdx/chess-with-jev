@@ -17,7 +17,7 @@
     "lint": "eslint . --cache --cache-location node_modules/.cache/eslint/",
     "format": "eslint . --fix --cache --cache-location node_modules/.cache/eslint/",
     "typecheck": "tsgo --noEmit",
-    "test": "vitest run"
+    "test": "bun test --isolate"
   },
   "devDependencies": {
     "@cw/eslint-config": "*",
